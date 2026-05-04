@@ -85,6 +85,11 @@ app.get("/profile",userAuth, async (req , res ) =>{
 
 })
 
+app.get("/logout", (req , res) => {
+  res.clearCookie("token");
+  res.status(200).send({message : "Logout successful"})
+})
+
 
 
 connectDB()
