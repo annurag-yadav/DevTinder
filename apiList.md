@@ -11,10 +11,15 @@ DevTinder APIs
 - PATCH /profile/password
 
 * connectionRequestRoutes
-- POST /request/send/intrested/:userId
-- POST /request/send/ignored/:userId
-- POST /request/send/accepted/:userId
-- POST /request/send/rejected/:userId
+- POST /request/send/:status/:userId
+
+ - POST /request/send/intrested/:userId
+ - POST /request/send/ignored/:userId
+
+- POST /request/review/:status/:requestId
+
+ - POST /request/review/accepted/:requestId
+ - POST /request/review/rejected/:requestId
 
 * userRouter
 - GET /user/conncection
