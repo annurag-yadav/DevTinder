@@ -1,4 +1,9 @@
 {
+  "name": "devtinder-backend",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "src/app.js",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
@@ -8,13 +13,8 @@
     "mongodb": "^6.21.0",
     "mongoose": "^8.23.1",
     "validator": "^13.15.35",
-    "winston": "^3.19.0",
-    "type": "module"
+    "winston": "^3.19.0"
   },
-  "name": "devtinder-backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js"
