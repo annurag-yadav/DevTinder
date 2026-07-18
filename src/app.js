@@ -8,7 +8,12 @@ const bcrypt = require('bcrypt');
 const cookieParser = require('cookie-parser'); //to read cookies from the request
 const jwt = require('jsonwebtoken');
 const userAuth = require('./middlewares/auth');
+const cors = require('cors');
 
+app.use(cors({
+  origin : "http://localhost:5173",
+  credentials : true, //allow cookies to be sent in cross-origin requests
+})); 
 app.use(express.json());
 app.use(cookieParser());
 
@@ -21,7 +26,7 @@ const userRouter = require('./routes/user');
 app.use("/", authRouter);
 app.use("/", profileRouter);
 app.use("/", requestRouter);
-app.use("/", userRouter);
+app.use("/", userRouter);      
 
 
 connectDB()

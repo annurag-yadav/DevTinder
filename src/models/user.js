@@ -15,7 +15,7 @@ const userSchema = new mongoose.Schema({
     emailId:{
         type : String,
         required : true,
-        unique : true,
+        unique : true, 
         lowercase : true,
         trim : true,
         validate(value){
@@ -78,6 +78,6 @@ userSchema.methods.validatePassword = async function (passwordByUser){
 
 
 
-const User = mongoose.model('user', userSchema);
+const User = mongoose.model('User', userSchema);
 
 module.exports = User;

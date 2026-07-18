@@ -11,6 +11,7 @@ userRouter.get("/user/requests/received", userAuth, async (req , res )=>{
 
         const loggedInUser = req.user;
 
+        //populate is used to get the details of the user who sent the connection request 
         const connectionRequests = await ConnectionRequest.find({
             toUserId : loggedInUser._id,
             status : "interested"
@@ -30,10 +31,12 @@ userRouter.get("/user/requests/received", userAuth, async (req , res )=>{
 });
 
 
+// get all the accepted connection requests for the logged in user
 userRouter.get("/user/connections", userAuth, async (req , res )=>{
-    try{
+    try{ 
 
         const loggedInUser = req.user;
+        
         const connections = await ConnectionRequest.find({
             $or : [
                 {fromUserId : loggedInUser._id, status : "accepted"},
@@ -42,6 +45,8 @@ userRouter.get("/user/connections", userAuth, async (req , res )=>{
         }).populate("fromUserId", ["firstName", "lastName","photoUrl", "skills", "about", "gender", "age"])
           .populate("toUserId", ["firstName", "lastName","photoUrl", "skills", "about", "gender", "age"]);
 
+
+          // Extract the connected users from the connections array and return them in the response
         const data = connections.map((row) =>{
             if(row.fromUserId._id.toString() === loggedInUser._id.toString()){
                 return row.toUserId;
@@ -73,6 +78,10 @@ userRouter.get("/feed", userAuth, async (req , res )=>{
 
         const skip = (page - 1) * limit;
 
+        // finding all connection requests where the logged in user is in fromUserId 
+        // or toUserId and then adding the fromUserId and toUserId to a set 
+        // so that we can filter out those users from the feed 
+
         const connectionRequests = await ConnectionRequest.find({
             $or: [{fromUserId : loggedInUser._id}, {toUserId : loggedInUser._id}],
         }).select("fromUserId toUserId");
@@ -83,14 +92,15 @@ userRouter.get("/feed", userAuth, async (req , res )=>{
             hideUsersFromFeed.add(req.toUserId.toString());
         });
         
+        // hiding the loggedin user and hideUsersFromFeed 
         const user = await User.find({
             $and : [
                 {_id : {$ne : loggedInUser._id}},
-                {_id : {$nin : Array.from(hideUsersFromFeed)}}
+                {_id : {$nin : Array.from(hideUsersFromFeed)}}      
             ],
-        }).select("firstName lastName skills about gender age").skip(skip).limit(limit);
+        }).select("firstName lastName photoUrl  skills about gender age").skip(skip).limit(limit);
 
-        res.status(200).send(user);
+        res.json({ data: user });
 
     }
     catch(err){
