@@ -10,6 +10,8 @@ const jwt = require('jsonwebtoken');
 const userAuth = require('./middlewares/auth');
 const cors = require('cors');
 
+require('dotenv').config(); // Load environment variables from .env file
+
 app.use(cors({
   origin : "http://localhost:5173",
   credentials : true, //allow cookies to be sent in cross-origin requests
