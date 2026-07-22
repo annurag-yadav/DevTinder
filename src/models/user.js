@@ -44,6 +44,13 @@ const userSchema = new mongoose.Schema({
         }
     }
     },
+     isPremium: {
+      type: Boolean,
+      default: false,
+    },
+    membershipType: {
+      type: String,
+    },
     photoUrl : {
         type : String,
         default : "https://media.istockphoto.com/id/1553217327/vector/user-profile-icon-avatar-person-sign-profile-picture-portrait-symbol-easily-editable-line.jpg?s=612x612&w=0&k=20&c=frb9OtEMcqiJM42xDV81uM5n653yJkN3zYm7bvSDylo=",
