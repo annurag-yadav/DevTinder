@@ -32,8 +32,21 @@ const initializeSocket = (server) => {
           const roomId = getSecretRoomId(userId, targetUserId);
           console.log(firstName + " " + text);
 
-          // TODO: Check if userId & targetUserId are friends
-          
+          // Check if the users are connected before allowing them to send messages
+          const connectionRequest = await ConnectionRequest.findOne({
+            $or: [
+              { fromUserId: userId, toUserId: targetUserId },
+              { fromUserId: targetUserId, toUserId: userId },
+            ],
+            status: "accepted",
+          });
+
+          if (!connectionRequest) {
+            socket.emit("messageError", {
+              message: "You can only message connected users.",
+            });
+            return;
+          }
 
           // Check if a chat already exists between the two users
           let chat = await Chat.findOne({

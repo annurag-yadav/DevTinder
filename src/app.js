@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser'); //to read cookies from the reques
 const jwt = require('jsonwebtoken');
 const userAuth = require('./middlewares/auth');
 const cors = require('cors');
+const http = require('http');
 
 require('dotenv').config(); // Load environment variables from .env file
 
@@ -24,6 +25,7 @@ const profileRouter = require('./routes/profile');
 const requestRouter = require('./routes/request');
 const userRouter = require('./routes/user');
 const paymentRouter = require('./routes/payment');
+const chatRouter = require('./routes/chat');
 
 
 app.use("/", authRouter);
@@ -31,12 +33,15 @@ app.use("/", profileRouter);
 app.use("/", requestRouter);
 app.use("/", userRouter);    
 app.use("/", paymentRouter);
+app.use("/", chatRouter);
 
+const server = http.createServer(app);
+initializeSocket(server);
 
 connectDB()
   .then(() =>{
     console.log('Database connected successfully');
-    app.listen(port, () => {
+    server.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
 });
   })
