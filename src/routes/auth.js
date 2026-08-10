@@ -1,10 +1,12 @@
 const express = require('express');
 const authRouter = express.Router();
-const {validateSignupData} = require('../utils/validation');
+const {validateSignupData , validatePassword } = require('../utils/validation');
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const jwt = require('jsonwebtoken');
 const logger = require('../config/logger');
+const PasswordReset = require('../models/passwordReset');
+const crypto = require('crypto');
 
 
 authRouter.post("/signup", async(req,res) =>{
@@ -81,6 +83,91 @@ authRouter.post("/logout", (req , res) =>{
     res.status(200).send({message : "Logout successful"})
   } catch (err){
     res.status(400).send({message : "Error logging out", error : err.message})
+  }
+});
+
+// forgot password api request the reset link and send it to the user
+authRouter.post("/forgot-password", async (req, res) => {
+    try {
+
+      const { emailId } = req.body;
+
+      const user = await User.findOne({ emailId: emailId})
+
+      if (!user){
+        throw new Error("User not found");
+      }
+
+      const token = crypto.randomBytes(32).toString("hex");
+      console.log("Generated token:", token); // Log the generated token for debugging
+      
+      const tokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+    
+      const expiresAt = new Date(Date.now() + 600000); // 10 minutes from now
+
+      const passwordReset = new PasswordReset({
+        userId: user._id,
+        tokenHash: tokenHash,
+        expiresAt: expiresAt
+      });
+
+      const savedPasswordReset = await passwordReset.save();
+
+      const resetLink = `http://localhost:5173/reset-password?token=${token}`;
+      console.log("Reset link:", resetLink); // Log the reset link for debugging
+
+      res.status(200).json({ message: "Password reset link generated successfully", resetLink: resetLink });
+
+      
+    } catch (err) {
+      res.status(400)
+      .json({ message: "Error generating password reset link", error: err.message });
+
+    }
+});
+
+// reset password api
+authRouter.post("/reset-password", async (req, res) => {
+    try {
+
+    const { token, newPassword}= req.body;
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const passwordReset = await PasswordReset.findOne({ tokenHash: hashedToken });
+
+    if (!passwordReset) {
+      throw new Error("Invalid or expired password reset token");
+    }
+    if (passwordReset.expiresAt < new Date()) {
+      throw new Error("Password reset token has expired");
+    }
+
+    const user = await User.findById(passwordReset.userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    validatePassword(newPassword);
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedNewPassword;
+    await user.save();
+
+    await PasswordReset.deleteOne({ _id: passwordReset._id });
+
+    res.status(200).json({ message: "Password reset successful" });
+
+  }
+  catch (err) {
+    console.error("Reset password error:", err);
+    res.status(400).json({ message: "Error resetting password", error: err.message });
   }
 });
 

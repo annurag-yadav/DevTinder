@@ -1,5 +1,11 @@
 const validation = require('validator');
 
+const validatePassword = (password) => {
+    if (!validation.isStrongPassword(password)) {
+        throw new Error("Weak password");
+    }
+};
+
 const validateSignupData = (req) => {
     const { firstName, lastName, emailId, password, age, gender } = req.body;
 
@@ -27,9 +33,11 @@ const validateEditFields = (req)=>{
 
     return isEditAllowed;
 }
+
  
 
 module.exports = {
+    validatePassword,
     validateSignupData,
     validateEditFields
 }

@@ -25,6 +25,7 @@ const profileRouter = require('./routes/profile');
 const requestRouter = require('./routes/request');
 const userRouter = require('./routes/user');
 const paymentRouter = require('./routes/payment');
+const initializeSocket = require('./utils/socket');
 const chatRouter = require('./routes/chat');
 
 
