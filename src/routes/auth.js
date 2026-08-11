@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const logger = require('../config/logger');
 const PasswordReset = require('../models/passwordReset');
 const crypto = require('crypto');
+const { sendEmail } = require('../utils/sendEmail');
 
 
 authRouter.post("/signup", async(req,res) =>{
@@ -117,9 +118,17 @@ authRouter.post("/forgot-password", async (req, res) => {
       const savedPasswordReset = await passwordReset.save();
 
       const resetLink = `http://localhost:5173/reset-password?token=${token}`;
-      console.log("Reset link:", resetLink); // Log the reset link for debugging
 
-      res.status(200).json({ message: "Password reset link generated successfully", resetLink: resetLink });
+      await sendEmail(
+          user.emailId,
+          "Reset your TalentLink password",
+           resetLink
+     );
+
+
+      res.status(200).json({ 
+        message: "Password reset link generated successfully", resetLink: resetLink
+       });
 
       
     } catch (err) {
@@ -169,6 +178,49 @@ authRouter.post("/reset-password", async (req, res) => {
     console.error("Reset password error:", err);
     res.status(400).json({ message: "Error resetting password", error: err.message });
   }
+});
+
+// Verify password reset token
+authRouter.get("/reset-password/verify", async (req, res) => {
+    try {
+        const { token } = req.query;
+
+        if (!token) {
+            throw new Error("Reset token is missing");
+        }
+
+        // Hash the token received from the frontend
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        // Find the reset request in database
+        const passwordReset = await PasswordReset.findOne({
+            tokenHash: hashedToken
+        });
+
+        if (!passwordReset) {
+            throw new Error("Invalid or expired password reset token");
+        }
+
+        // Check whether token has expired
+        if (passwordReset.expiresAt < new Date()) {
+            throw new Error("Password reset token has expired");
+        }
+
+        res.status(200).json({
+            message: "Password reset token is valid"
+        });
+
+    } catch (err) {
+        console.error("Token verification error:", err);
+
+        res.status(400).json({
+            message: "Invalid password reset link",
+            error: err.message
+        });
+    }
 });
 
 module.exports = authRouter;
