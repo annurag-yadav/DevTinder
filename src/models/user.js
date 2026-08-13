@@ -60,13 +60,54 @@ const userSchema = new mongoose.Schema({
             }
         }
     },
-    about : {
-        type : String,
-        default : "Hey there! I am using DevTinder."
-    },
-    skills : {
-        type : [String]
-    }
+    about: {
+    type: String,
+    default: "Hey there! I am using TalentLink."
+},
+
+skills: {
+    type: [String],
+    default: []
+},
+
+domains: {
+    type: [String],
+    default: []
+},
+
+experienceMonths: {
+    type: Number,
+    default: 0,
+    min: 0
+},
+
+currentStatus: {
+    type: String,
+    enum: [
+        "Student",
+        "Working Professional",
+        "Teacher/Faculty",
+        "Freelancer",
+        "Job Seeker",
+        "Other"
+    ],
+    default: "Student"
+},
+
+role: {
+    type: String,
+    default: ""
+},
+
+organization: {
+    type: String,
+    default: ""
+},
+
+profileCompleted: {
+    type: Boolean,
+    default: false
+}
     
 }, {timestamps: true});
 
