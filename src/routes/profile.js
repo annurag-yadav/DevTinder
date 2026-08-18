@@ -4,6 +4,7 @@ const {validateSignupData , validateEditFields} = require('../utils/validation')
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const userAuth = require('../middlewares/auth');
+const { calculateMatchScore, getCommonDomains, getCommonSkills } = require("../utils/matching")
 
 profileRouter.get("/profile/view",userAuth, async (req , res ) =>{
     try{
@@ -121,34 +122,78 @@ profileRouter.patch("/profile/complete", userAuth, async (req, res) => {
 });
 
 // Get another user's public profile
-profileRouter.get("/profile/:userId", userAuth, async (req, res) => {
-    try {
+profileRouter.get(
+    "/profile/:userId",
+    userAuth,
+    async (req, res) => {
 
-        const { userId } = req.params;
+        try {
 
-        const user = await User.findById(userId).select(
-            "firstName lastName photoUrl about skills domains experienceMonths currentStatus role organization"
-        );
+            const { userId } = req.params;
 
-        if (!user) {
-            return res.status(404).json({
-                message: "User not found"
+            // Logged-in user
+            const loggedInUser = req.user;
+
+            // Find target user
+            const user = await User.findById(userId).select(
+                "firstName lastName photoUrl about skills domains experienceMonths currentStatus role organization"
+            );
+
+            if (!user) {
+                return res.status(404).json({
+                    message: "User not found"
+                });
+            }
+
+            // Calculate match percentage
+            const matchResult = calculateMatchScore(
+                loggedInUser,
+                user
+            );
+
+            // Find common skills
+            const commonSkills = getCommonSkills(
+                loggedInUser,
+                user
+            );
+
+            // Find common domains
+            const commonDomains = getCommonDomains(
+                loggedInUser,
+                user
+            );
+
+            // Send only user-facing matching information
+            res.status(200).json({
+                data: {
+
+                    ...user.toObject(),
+
+                    // Overall match percentage
+                    matchPercentage: matchResult.matchScore,
+
+                    // Common skills
+                    commonSkills,
+
+                    // Common domains
+                    commonDomains
+
+                }
+            });
+
+        } catch (err) {
+
+            console.error(
+                "Public profile error:",
+                err
+            );
+
+            res.status(400).json({
+                message: "Error fetching profile",
+                error: err.message
             });
         }
-
-        res.status(200).json({
-            data: user
-        });
-
-    } catch (err) {
-
-        console.error("Public profile error:", err);
-
-        res.status(400).json({
-            message: "Error fetching profile",
-            error: err.message
-        });
     }
-});
+);
 
 module.exports = profileRouter;

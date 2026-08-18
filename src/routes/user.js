@@ -179,64 +179,95 @@ userRouter.get("/feed", userAuth, async (req, res) => {
 // Search users
 userRouter.get("/search", userAuth, async (req, res) => {
     try {
+
         const loggedInUser = req.user;
+
         const searchQuery = req.query.q?.trim();
 
-        // Check if search query exists
+        // -----------------------------
+        // 1. Validate search query
+        // -----------------------------
         if (!searchQuery) {
             return res.status(400).json({
                 message: "Search query is required"
             });
         }
-        // Search users
+
+        // -----------------------------
+        // 2. Pagination
+        // -----------------------------
+        const page = Math.max(
+            parseInt(req.query.page) || 1,
+            1
+        );
+
+        let limit = parseInt(req.query.limit) || 10;
+
+        // Maximum 50 users per page
+        limit = Math.min(Math.max(limit, 1), 50);
+
+        // -----------------------------
+        // 3. Escape regex characters
+        // -----------------------------
+        const escapedQuery = searchQuery.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+        );
+
+        // -----------------------------
+        // 4. Find matching users
+        // -----------------------------
         const users = await User.find({
             $and: [
+
                 // Don't show logged-in user
                 {
                     _id: {
                         $ne: loggedInUser._id
                     }
                 },
-                // Only show completed profiles
+
+                // Only completed profiles
                 {
                     profileCompleted: true
                 },
-                // Search in different profile fields
+
+                // Search fields
                 {
                     $or: [
                         {
                             firstName: {
-                                $regex: searchQuery,
+                                $regex: escapedQuery,
                                 $options: "i"
                             }
                         },
                         {
                             lastName: {
-                                $regex: searchQuery,
+                                $regex: escapedQuery,
                                 $options: "i"
                             }
                         },
                         {
                             skills: {
-                                $regex: searchQuery,
+                                $regex: escapedQuery,
                                 $options: "i"
                             }
                         },
                         {
                             domains: {
-                                $regex: searchQuery,
+                                $regex: escapedQuery,
                                 $options: "i"
                             }
                         },
                         {
                             role: {
-                                $regex: searchQuery,
+                                $regex: escapedQuery,
                                 $options: "i"
                             }
                         },
                         {
                             organization: {
-                                $regex: searchQuery,
+                                $regex: escapedQuery,
                                 $options: "i"
                             }
                         }
@@ -244,12 +275,190 @@ userRouter.get("/search", userAuth, async (req, res) => {
                 }
 
             ]
-        }).select(
-            "firstName lastName photoUrl skills domains experienceMonths currentStatus role organization about"
-        ).limit(10);
+        })
+        .select(
+            "firstName lastName photoUrl about skills domains experienceMonths currentStatus role organization"
+        )
+        .limit(1000);
+
+        // -----------------------------
+        // 5. Calculate search relevance
+        // -----------------------------
+        const queryLower = searchQuery.toLowerCase();
+
+        const rankedUsers = users.map((user) => {
+
+            let searchScore = 0;
+
+            const firstName =
+                (user.firstName || "").toLowerCase();
+
+            const lastName =
+                (user.lastName || "").toLowerCase();
+
+            const role =
+                (user.role || "").toLowerCase();
+
+            const organization =
+                (user.organization || "").toLowerCase();
+
+            const skills = (user.skills || []).map(
+                (skill) => skill.toLowerCase()
+            );
+
+            const domains = (user.domains || []).map(
+                (domain) => domain.toLowerCase()
+            );
+
+            // -----------------------------
+            // First Name
+            // -----------------------------
+
+            // Exact first name
+            if (firstName === queryLower) {
+                searchScore += 100;
+            }
+
+            // First name starts with query
+            else if (firstName.startsWith(queryLower)) {
+                searchScore += 80;
+            }
+
+            // First name contains query
+            else if (firstName.includes(queryLower)) {
+                searchScore += 60;
+            }
+
+            // -----------------------------
+            // Last Name
+            // -----------------------------
+
+            // Exact last name
+            if (lastName === queryLower) {
+                searchScore += 70;
+            }
+
+            // Last name starts with query
+            else if (lastName.startsWith(queryLower)) {
+                searchScore += 50;
+            }
+
+            // Last name contains query
+            else if (lastName.includes(queryLower)) {
+                searchScore += 30;
+            }
+
+            // -----------------------------
+            // Skills
+            // -----------------------------
+
+            // Exact skill
+            if (skills.includes(queryLower)) {
+                searchScore += 60;
+            }
+
+            // Partial skill
+            else if (
+                skills.some((skill) =>
+                    skill.includes(queryLower)
+                )
+            ) {
+                searchScore += 40;
+            }
+
+            // -----------------------------
+            // Domains
+            // -----------------------------
+
+            // Exact domain
+            if (domains.includes(queryLower)) {
+                searchScore += 50;
+            }
+
+            // Partial domain
+            else if (
+                domains.some((domain) =>
+                    domain.includes(queryLower)
+                )
+            ) {
+                searchScore += 35;
+            }
+
+            // -----------------------------
+            // Role
+            // -----------------------------
+
+            if (role === queryLower) {
+                searchScore += 40;
+            }
+            else if (role.includes(queryLower)) {
+                searchScore += 25;
+            }
+
+            // -----------------------------
+            // Organization
+            // -----------------------------
+
+            if (organization === queryLower) {
+                searchScore += 30;
+            }
+            else if (organization.includes(queryLower)) {
+                searchScore += 15;
+            }
+
+            return {
+                ...user.toObject(),
+                searchScore
+            };
+        });
+
+        // -----------------------------
+        // 6. Sort by search score
+        // -----------------------------
+
+        rankedUsers.sort(
+            (a, b) => b.searchScore - a.searchScore
+        );
+
+        // -----------------------------
+        // 7. Total results
+        // -----------------------------
+
+        const totalResults = rankedUsers.length;
+
+        const totalPages = Math.ceil(
+            totalResults / limit
+        );
+
+        // -----------------------------
+        // 8. Pagination
+        // -----------------------------
+
+        const skip = (page - 1) * limit;
+
+        const paginatedResults =
+            rankedUsers.slice(
+                skip,
+                skip + limit
+            );
+
+        // -----------------------------
+        // 9. Send response
+        // -----------------------------
 
         res.status(200).json({
-            data: users
+
+            data: paginatedResults,
+
+            pagination: {
+                page,
+                limit,
+                totalResults,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1
+            }
+
         });
 
     } catch (err) {
