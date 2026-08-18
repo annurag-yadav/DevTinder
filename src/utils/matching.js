@@ -1,69 +1,96 @@
-// helper function to normalize strings for comparison
+// Helper function to normalize strings for comparison
 const normalize = (value) => {
     return String(value || "").trim().toLowerCase();
 };
 
-// 1. DOMAIN SCORE 40 points 
+// Get common domains
+const getCommonDomains = (loggedInUser, candidateUser) => {
+
+    const userDomains = loggedInUser.domains || [];
+    const candidateDomains = candidateUser.domains || [];
+
+    const normalizedCandidateDomains =
+        candidateDomains.map(normalize);
+
+    return userDomains.filter((domain) =>
+        normalizedCandidateDomains.includes(normalize(domain))
+    );
+};
+
+// Get common skills
+const getCommonSkills = (loggedInUser, candidateUser) => {
+
+    const userSkills = loggedInUser.skills || [];
+    const candidateSkills = candidateUser.skills || [];
+
+    const normalizedCandidateSkills =
+        candidateSkills.map(normalize);
+
+    return userSkills.filter((skill) =>
+        normalizedCandidateSkills.includes(normalize(skill))
+    );
+};
+
+
+// 1. DOMAIN SCORE - 40 points
 const calculateDomainScore = (loggedInUser, candidateUser) => {
 
     const userDomains = loggedInUser.domains || [];
     const candidateDomains = candidateUser.domains || [];
 
-    // If the logged-in user has no domains,
-    // we cannot calculate domain similarity.
     if (userDomains.length === 0) {
         return 0;
     }
 
-    const normalizedUserDomains = userDomains.map(normalize);
-    const normalizedCandidateDomains = candidateDomains.map(normalize);
+    const normalizedUserDomains =
+        userDomains.map(normalize);
 
-    // Find common domains
+    const normalizedCandidateDomains =
+        candidateDomains.map(normalize);
+
     const commonDomains = normalizedUserDomains.filter(
-        (domain) => normalizedCandidateDomains.includes(domain)
+        (domain) =>
+            normalizedCandidateDomains.includes(domain)
     );
 
-    // Maximum domain score = 40
     const score =
-        (commonDomains.length / normalizedUserDomains.length) * 40;
+        (commonDomains.length / userDomains.length) * 40;
 
     return Math.min(score, 40);
 };
 
-// 2. SKILL SCORE 35 points
+// 2. SKILL SCORE - 35 points
 const calculateSkillScore = (loggedInUser, candidateUser) => {
 
     const userSkills = loggedInUser.skills || [];
     const candidateSkills = candidateUser.skills || [];
 
-    // Beginner may have no skills.
-    // In that case skill score is simply 0.
     if (userSkills.length === 0) {
         return 0;
     }
 
-    const normalizedUserSkills = userSkills.map(normalize);
-    const normalizedCandidateSkills = candidateSkills.map(normalize);
+    const normalizedUserSkills =
+        userSkills.map(normalize);
 
-    // Find common skills
+    const normalizedCandidateSkills =
+        candidateSkills.map(normalize);
+
     const commonSkills = normalizedUserSkills.filter(
-        (skill) => normalizedCandidateSkills.includes(skill)
+        (skill) =>
+            normalizedCandidateSkills.includes(skill)
     );
 
-    // Maximum skill score = 35
     const score =
-        (commonSkills.length / normalizedUserSkills.length) * 35;
+        (commonSkills.length / userSkills.length) * 35;
 
     return Math.min(score, 35);
 };
 
-// 3. EXPERIENCE SCORE 10 points 
-// 0-6 months = 10 points 
-// 6-12 months = 8 points
-// 12-24 months = 5 points 
-// 24-48 months = 2 points 
-// >48 months = 0 points
-const calculateExperienceScore = (loggedInUser, candidateUser) => {
+// 3. EXPERIENCE SCORE - 10 points
+const calculateExperienceScore = (
+    loggedInUser,
+    candidateUser
+) => {
 
     const userExperience = Number(
         loggedInUser.experienceMonths || 0
@@ -96,17 +123,15 @@ const calculateExperienceScore = (loggedInUser, candidateUser) => {
     return 0;
 };
 
-
-// 4. STATUS & ROLE SCORE 10 points
-// Same status = 6 points
-// Same role = 4 points
-// Different status/role = 0 points
-
-const calculateStatusRoleScore = (loggedInUser, candidateUser) => {
+// 4. STATUS & ROLE SCORE - 10 points
+const calculateStatusRoleScore = (
+    loggedInUser,
+    candidateUser
+) => {
 
     let score = 0;
 
-    // Status match
+    // Same status = 6 points
     if (
         normalize(loggedInUser.currentStatus) !== "" &&
         normalize(loggedInUser.currentStatus) ===
@@ -115,7 +140,7 @@ const calculateStatusRoleScore = (loggedInUser, candidateUser) => {
         score += 6;
     }
 
-    // Role match
+    // Same role = 4 points
     if (
         normalize(loggedInUser.role) !== "" &&
         normalize(loggedInUser.role) ===
@@ -127,7 +152,7 @@ const calculateStatusRoleScore = (loggedInUser, candidateUser) => {
     return score;
 };
 
-// 5. ORGANIZATION SCORE 5 points
+// 5. ORGANIZATION SCORE - 5 points
 const calculateOrganizationScore = (
     loggedInUser,
     candidateUser
@@ -141,8 +166,6 @@ const calculateOrganizationScore = (
         candidateUser.organization
     );
 
-    // If either user has no organization,
-    // no organization points are given.
     if (
         userOrganization === "" ||
         candidateOrganization === ""
@@ -150,14 +173,16 @@ const calculateOrganizationScore = (
         return 0;
     }
 
-    if (userOrganization === candidateOrganization) {
+    if (
+        userOrganization === candidateOrganization
+    ) {
         return 5;
     }
 
     return 0;
 };
 
-// final match score calculation
+// FINAL MATCH SCORE
 const calculateMatchScore = (
     loggedInUser,
     candidateUser
@@ -183,12 +208,12 @@ const calculateMatchScore = (
         candidateUser
     );
 
-    const organizationScore = calculateOrganizationScore(
-        loggedInUser,
-        candidateUser
-    );
+    const organizationScore =
+        calculateOrganizationScore(
+            loggedInUser,
+            candidateUser
+        );
 
-    // Add all scores
     const totalScore =
         domainScore +
         skillScore +
@@ -196,7 +221,6 @@ const calculateMatchScore = (
         statusRoleScore +
         organizationScore;
 
-    // Round to 2 decimal places
     const finalScore = Number(
         totalScore.toFixed(2)
     );
@@ -205,11 +229,19 @@ const calculateMatchScore = (
         matchScore: finalScore,
 
         breakdown: {
-            domainScore: Number(domainScore.toFixed(2)),
-            skillScore: Number(skillScore.toFixed(2)),
-            experienceScore: experienceScore,
-            statusRoleScore: statusRoleScore,
-            organizationScore: organizationScore
+            domainScore: Number(
+                domainScore.toFixed(2)
+            ),
+
+            skillScore: Number(
+                skillScore.toFixed(2)
+            ),
+
+            experienceScore,
+
+            statusRoleScore,
+
+            organizationScore
         }
     };
 };
@@ -220,5 +252,7 @@ module.exports = {
     calculateExperienceScore,
     calculateStatusRoleScore,
     calculateOrganizationScore,
-    calculateMatchScore
+    calculateMatchScore,
+    getCommonSkills,
+    getCommonDomains
 };
